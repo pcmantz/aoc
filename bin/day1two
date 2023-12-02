@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+class Day1two
+  module Digits
+    ZERO = 'zero'
+    ONE = 'one'
+    TWO = 'two'
+    THREE = 'three'
+    FOUR = 'four'
+    FIVE = 'five'
+    SIX = 'six'
+    SEVEN = 'seven'
+    EIGHT = 'eight'
+    NINE = 'nine'
+
+    STRING_MAP = {
+      ZERO => 0,
+      ONE => 1,
+      TWO => 2,
+      THREE => 3,
+      FOUR => 4,
+      FIVE => 5,
+      SIX => 6,
+      SEVEN => 7,
+      EIGHT => 8,
+      NINE => 9
+    }.freeze
+
+    STRINGS = STRING_MAP.keys.freeze
+    INTEGERS = (0..9).freeze
+    INTEGER_STRINGS = INTEGERS.map(&:to_s).freeze
+  end
+
+  def self.run!(file)
+    new.run!(file)
+  end
+
+  def run!(file)
+    fh = File.open(file)
+
+    sum = fh.readlines.map { |line| parse_line(line) }.sum
+
+    $stdout.puts(sum)
+  end
+
+  def parse_line(line)
+    numbers = tokenize(line)
+
+    calibration_value(numbers)
+  end
+
+  def calibration_value(numbers)
+    numbers.first * 10 + numbers.last
+  end
+
+  def tokenize(string)
+    return [] if string.nil? || string.empty?
+
+    if (string_token = Digits::STRINGS.find { |token| match?(token, string) })
+      number = Digits::STRING_MAP.fetch(string_token)
+      return [number].concat(tokenize(string[(string_token.length-1)..]))
+
+    elsif (number = (0..9).find { |number| match?(number.to_s, string) })
+      return [number].concat(tokenize(string[1..]))
+
+    else
+      return tokenize(string[1..])
+    end
+  end
+
+  def match?(token, string)
+    /^#{token}/.match?(string)
+  end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  ARGV.each do |file|
+    Day1two.run!(file)
+  end
+end

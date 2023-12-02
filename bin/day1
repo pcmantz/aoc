@@ -1,0 +1,27 @@
+#!/usr/bin/env ruby
+
+class Day1
+
+  def run!(file)
+    fh = File.open(file)
+
+    sum = fh.readlines.map {|line| two_digit_for_line(line) }.sum
+
+    STDOUT.puts(sum)
+  end
+
+  def two_digit_for_line(line)
+    chars = line.chars
+
+    left_digit = chars.find { |c| c.match(/\d/) }
+    right_digit = chars.reverse.find { |c| c.match(/\d/) }
+
+    "#{left_digit}#{right_digit}".to_i
+  end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  ARGV.each do |file|
+    Day1.new.run!(file)
+  end
+end
