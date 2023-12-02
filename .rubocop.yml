@@ -1,0 +1,15 @@
+inherit_from:
+  - .rubocop_todo.yml
+  - .rubocop_new.yml
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  DisplayCopNames: true
+  Exclude:
+    - vendor/**/*
+    - bin/**/*
+    - db/schema.rb
+    - db/migrate/**/*
+    - contrib/**/*
+    - public/system/**/*

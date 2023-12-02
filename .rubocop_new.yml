@@ -1,0 +1,50 @@
+Layout/FirstArrayElementIndentation:
+  Enabled: true
+  EnforcedStyle: consistent
+Layout/FirstArrayElementLineBreak:
+  Enabled: true
+Layout/FirstHashElementIndentation:
+  Enabled: true
+  EnforcedStyle: consistent
+Layout/FirstMethodArgumentLineBreak:
+  Enabled: true
+Layout/LineLength:
+  Max: 100
+Layout/MultilineArrayLineBreaks:
+  Enabled: true
+Layout/MultilineHashKeyLineBreaks:
+  Enabled: true
+Layout/MultilineMethodArgumentLineBreaks:
+  Enabled: true
+Layout/MultilineMethodCallBraceLayout:
+  Enabled: true
+  EnforcedStyle: new_line
+Layout/MultilineMethodDefinitionBraceLayout:
+  Enabled: true
+  EnforcedStyle: new_line
+
+Layout/RedundantLineBreak:
+  Enabled: true
+
+Style/MethodCallWithArgsParentheses:
+  Enabled: true
+  EnforcedStyle: require_parentheses
+  AllowedMethods:
+    - not_to
+    - raise
+    - require
+    - to
+    - to_not
+    - warn
+    - describe
+  AllowedPatterns:
+    - ^assert
+    - ^refute
+Style/MultilineTernaryOperator:
+  Enabled: false
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: single_quotes
+Style/StringLiteralsInInterpolation:
+  Enabled: true
+  EnforcedStyle: single_quotes
