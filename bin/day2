@@ -1,0 +1,100 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+require 'pry-byebug'
+
+class Day2
+  class Game
+    attr_accessor :id, :rounds
+
+    def initialize(id:, rounds:)
+      @id = id
+      @rounds = rounds
+    end
+
+    def possible?
+      rounds.all? do |round|
+        round.red <= 12 && round.green <= 13 && round.blue <= 14
+      end
+    end
+
+    def fewest_bag
+      round = Round.new
+      round.red = rounds.map(&:red).max
+      round.green = rounds.map(&:green).max
+      round.blue = rounds.map(&:blue).max
+
+      round
+    end
+  end
+
+  class Round
+    attr_accessor :blue, :green, :red
+
+    def initialize
+      @red = 0
+      @green = 0
+      @blue = 0
+
+    end
+  end
+
+  def self.call(...)
+    new(...).call
+  end
+
+  attr_accessor :file
+
+  def initialize(file:)
+    @file = file
+  end
+
+  def call
+    fh = File.open(file)
+
+    games = fh.readlines.map { |line| parse_line(line) }
+
+    $stderr.puts(games.filter(&:possible?).map(&:id).sum)
+  end
+
+  def parse_line(line)
+    game_line, rounds_line = line.split(':').map(&:strip)
+
+    game_id = parse_game_line(game_line)
+
+    rounds_strings = rounds_line.split(';').map(&:strip)
+    rounds = rounds_strings.map { |str| parse_round_line(str) }
+
+    Game.new(id: game_id, rounds:)
+  end
+
+  def parse_game_line(game_line)
+    /Game (\d+)/.match(game_line)[1].to_i
+  end
+
+  def parse_round_line(round_line)
+    round = Round.new
+
+    cubes_lines = round_line.split(',').map(&:strip)
+    cubes_lines.each do |cube_line|
+      case cube_line
+      when /(\d+) red/
+        round.red = $1.to_i
+      when /(\d+) green/
+        round.green = $1.to_i
+      when /(\d+) blue/
+        round.blue = $1.to_i
+      end
+    end
+
+    round
+  end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  ARGV.each do |arg|
+    Day2.call(file: arg)
+  end
+end
