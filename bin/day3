@@ -1,0 +1,180 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+require 'pry-byebug'
+
+class Day3
+  class Num
+    attr_accessor :row, :col, :num
+
+    def initialize(row:, col:, num:)
+      @row = row
+      @col = col
+      @num = num
+    end
+
+    def adjacent_coords
+      prev_row = Range.new(col - 1, (col + num_length)).map { |c| [row - 1, c] }
+      same_row = [ [row, col - 1], [row, col + num_length]]
+      next_row = Range.new(col - 1, col + num_length).map { |c| [row + 1, c] }
+
+      prev_row + same_row + next_row
+    end
+
+    def num_length
+      return @num_length if defined?(@num_length)
+
+      @num_length = num.digits.size
+    end
+  end
+
+  def self.call(...)
+    new(...).call
+  end
+
+  def initialize(file:)
+    @file = file
+  end
+
+  attr_accessor :file
+
+  def call
+    fh = File.open(file)
+
+    # This populates internal variables
+    fh.readlines.each.with_index { |line, index| parse_line(line.strip, index) }
+
+    print_gear_ratio_sum
+  end
+
+  # This is the solution to the first part.
+  #
+  def print_valid_number_sum
+    valid_numbers = numbers.filter { valid_number(_1) }
+    sum = valid_numbers.map(&:num).sum
+
+    $stdout.puts(sum)
+  end
+
+  # This is the solution to the second part.
+  #
+  def print_gear_ratio_sum
+    valid_gear_map = gears.each_with_object({}) do |gear, memo|
+      coords = gear_adjacent_coords(gear)
+      nums = coords.map { number_map.dig(*_1) }.compact.uniq
+
+      memo[gear] = nums if nums.count == 2
+    end
+
+    gear_ratio_sum = valid_gear_map.values.map { _1.map(&:num).reduce(:*) }.sum
+
+    $stdout.puts(gear_ratio_sum)
+  end
+
+  def parse_line(line, row)
+    col = 0
+
+    while col < line.length
+      char = line[col]
+
+      case char
+      when %r{\d}
+        number_string = parse_number(line[col..-1])
+        add_number(row, col, number_string)
+        col += number_string.length
+
+      when '*'
+        add_gear(row, col, char)
+        col += 1
+
+      when %r{[^a-zA-Z0-9_.*]}
+        add_symbol(row, col, char)
+        col += 1
+
+      when '.'
+        col += 1
+
+      when true
+        raise Error, %{unrecognized input: "#{char}"}
+      end
+    end
+  end
+
+  def parse_number(line)
+    /^(\d+)/.match(line).captures.first
+  end
+
+  def add_number(row, col, number_string)
+    num = Num.new(row:, col:, num: number_string.to_i)
+
+    number_map[row] ||= {}
+
+    # create a pointer to the number
+    (col..col + number_string.length - 1).each do |c|
+      number_map[row][c] = num
+    end
+
+    numbers.push(num)
+  end
+
+  def gear_adjacent_coords(gear)
+    row, col = gear
+
+    prev_row = Range.new(col - 1, (col + 1)).map { |c| [row - 1, c] }
+    same_row = [ [row, col - 1], [row, col + 1]]
+    next_row = Range.new(col - 1, col + 1).map { |c| [row + 1, c] }
+
+    prev_row + same_row + next_row
+  end
+
+  def add_gear(row, col, symbol)
+    gears.push([row, col])
+
+    add_symbol(row, col, symbol)
+  end
+
+  def add_symbol(row, col, symbol)
+    symbol_map[row] ||= {}
+    symbol_map[row][col] = symbol
+  end
+
+  def numbers
+    return @numbers if defined?(@numbers)
+
+    @numbers = []
+  end
+
+  def gears
+    return @gears if defined?(@gears)
+
+    @gears = []
+  end
+
+  def symbol_map
+    return @symbol_map if defined?(@symbol_map)
+
+    @symbol_map = Hash.new
+  end
+
+  def number_map
+    return @number_map if defined?(@number_map)
+
+    @number_map = {}
+  end
+
+  def valid_number(num)
+    num.adjacent_coords.any? do |coord|
+      row, col = coord
+      symbol_map.dig(row, col) != nil
+    end
+  end
+end
+
+
+if __FILE__ == $PROGRAM_NAME
+  ARGV.each do |file|
+    Day3.call(file: file)
+  end
+end
