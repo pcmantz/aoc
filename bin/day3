@@ -47,6 +47,8 @@ class Day3
     fh.readlines.each.with_index { |line, index| parse_line(line.strip, index) }
 
     print_gear_ratio_sum
+
+    exit(0)
   end
 
   # This is the solution to the first part.
@@ -63,7 +65,7 @@ class Day3
   def print_gear_ratio_sum
     valid_gear_map = gears.each_with_object({}) do |gear, memo|
       coords = gear_adjacent_coords(gear)
-      nums = coords.map { number_map.dig(*_1) }.compact.uniq
+      nums = coords.map { number_at(*_1) }.compact.uniq
 
       memo[gear] = nums if nums.count == 2
     end
@@ -108,15 +110,21 @@ class Day3
 
   def add_number(row, col, number_string)
     num = Num.new(row:, col:, num: number_string.to_i)
-
-    number_map[row] ||= {}
-
-    # create a pointer to the number
-    (col..col + number_string.length - 1).each do |c|
-      number_map[row][c] = num
-    end
-
     numbers.push(num)
+
+    (col..col + number_string.length - 1).each do |c|
+      add_to_map(number_map, row, c, num)
+    end
+  end
+
+  def add_gear(row, col, symbol)
+    gears.push([row, col])
+
+    add_symbol(row, col, symbol)
+  end
+
+  def add_symbol(row, col, symbol)
+    add_to_map(symbol_map, row, col, symbol)
   end
 
   def gear_adjacent_coords(gear)
@@ -129,17 +137,6 @@ class Day3
     prev_row + same_row + next_row
   end
 
-  def add_gear(row, col, symbol)
-    gears.push([row, col])
-
-    add_symbol(row, col, symbol)
-  end
-
-  def add_symbol(row, col, symbol)
-    symbol_map[row] ||= {}
-    symbol_map[row][col] = symbol
-  end
-
   def numbers
     return @numbers if defined?(@numbers)
 
@@ -150,6 +147,14 @@ class Day3
     return @gears if defined?(@gears)
 
     @gears = []
+  end
+
+  def symbol_at(row, col) = symbol_map.dig(row, col)
+  def number_at(row, col) = number_map.dig(row, col)
+
+  def add_to_map(map, row, col, value)
+    map[row] ||= {}
+    map[row][col] = value
   end
 
   def symbol_map
@@ -167,7 +172,7 @@ class Day3
   def valid_number(num)
     num.adjacent_coords.any? do |coord|
       row, col = coord
-      symbol_map.dig(row, col) != nil
+      symbol_at(row, col) != nil
     end
   end
 end
