@@ -17,7 +17,7 @@ class Day3
 
     def adjacent_coords
       prev_row = Range.new(col - 1, (col + num_length)).map { |c| [row - 1, c] }
-      same_row = [ [row, col - 1], [row, col + num_length]]
+      same_row = [[row, col - 1], [row, col + num_length]]
       next_row = Range.new(col - 1, col + num_length).map { |c| [row + 1, c] }
 
       prev_row + same_row + next_row
@@ -80,7 +80,7 @@ class Day3
       char = line[col]
 
       case char
-      when %r{\d}
+      when /\d/
         number_string = parse_number(line[col..-1])
         add_number(row, col, number_string)
         col += number_string.length
@@ -89,7 +89,7 @@ class Day3
         add_gear(row, col, char)
         col += 1
 
-      when %r{[^a-zA-Z0-9_.*]}
+      when /[^a-zA-Z0-9_.*]/
         add_symbol(row, col, char)
         col += 1
 
@@ -97,7 +97,7 @@ class Day3
         col += 1
 
       when true
-        raise Error, %{unrecognized input: "#{char}"}
+        raise Error, %(unrecognized input: "#{char}")
       end
     end
   end
@@ -123,7 +123,7 @@ class Day3
     row, col = gear
 
     prev_row = Range.new(col - 1, (col + 1)).map { |c| [row - 1, c] }
-    same_row = [ [row, col - 1], [row, col + 1]]
+    same_row = [[row, col - 1], [row, col + 1]]
     next_row = Range.new(col - 1, col + 1).map { |c| [row + 1, c] }
 
     prev_row + same_row + next_row
@@ -155,7 +155,7 @@ class Day3
   def symbol_map
     return @symbol_map if defined?(@symbol_map)
 
-    @symbol_map = Hash.new
+    @symbol_map = {}
   end
 
   def number_map
@@ -172,9 +172,8 @@ class Day3
   end
 end
 
-
 if __FILE__ == $PROGRAM_NAME
   ARGV.each do |file|
-    Day3.call(file: file)
+    Day3.call(file:)
   end
 end
