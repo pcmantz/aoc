@@ -65,8 +65,9 @@ class Day5
 
     def call(input)
       map_range = map_ranges.find { |range| range.in_range?(input) }
+      return input if map_range.nil?
 
-      map_range.nil? ? input : map_range.call(input)
+      map_range.call(input)
     end
   end
 
@@ -74,7 +75,9 @@ class Day5
     attr_accessor :source, :dest, :length
 
     def self.from_array(ary)
-      new(source: ary[0], dest: ary[1], length: ary[2])
+      dest, source, length = ary
+
+      new(source:, dest:, length:)
     end
 
     def initialize(source:, dest:, length:)
@@ -84,7 +87,7 @@ class Day5
     end
 
     def in_range?(input)
-      input >= source && input < (source + length)
+      (input >= source) && (input < (source + length))
     end
 
     def call(input)
@@ -167,6 +170,67 @@ class Day5
       nil
     end
   end
+
+  def self.find_lowest_location(filename)
+    result = Parser.parse_file(filename)
+
+    seeds = result.fetch(:seeds)
+    almanac = result.fetch(:almanac)
+
+    lowest_location_in_seeds(almanac, seeds)
+  end
+
+  def self.find_lowest_location_from_pairs(filename)
+    result = Parser.parse_file(filename)
+
+    almanac = result.fetch(:almanac)
+    seed_ranges =
+      result
+        .fetch(:seeds)
+        .each_slice(2)
+        .map { _1..(_1 + _2 - 1) }
+        .sort { _1.begin <=> _2.begin }
+
+    lowest_locations = seed_ranges.map { lowest_location_in_seeds(almanac, _1) }
+
+    lowest_locations.min
+  end
+
+  def self.lowest_location_in_seeds(almanac, seeds)
+    seeds.map { [_1, almanac.seed_location(_1) ] }.max { _1[1] <=> _2[1] }
+  end
+
+  NUM_RACTORS = 20
+
+  def self.ractor_lowest_location_in_seeds(almanac, seeds)
+    pipe = Ractor.new { loop { Ractor.yield(Ractor.receive) } }
+    shareable_almanac = Ractor.make_shareable(almanac)
+    seed_count = seeds.count
+
+    workers = (1..NUM_RACTORS).map do |i|
+      Ractor.new(i, pipe, shareable_almanac) do |i, pipe, almanac|
+        while seed = pipe.take do
+          Ractor.yield([seed, almanac.seed_location(seed)])
+        end
+      end
+    end
+
+    # Start calculating
+    seeds.each { |seed| pipe.send(seed) }
+
+    lowest_location = nil
+    while calculated_seeds < seed_count
+      ractor, (seed, location) = Ractor.select(*workers)
+
+      lowest_location ||= [seed, location]
+      lowest_location = lowest_location[1] =< location ? lowest_location : [seed, location]
+
+      calculated_seeds += 1
+    end
+
+    lowest_location
+  end
+
 end
 
 if __FILE__ == $PROGRAM_NAME
