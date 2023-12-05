@@ -1,0 +1,116 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+require 'pry-byebug'
+
+class Day4
+
+  class Card
+    attr_accessor :id, :winning, :numbers
+
+    def initialize(id:, winning:, numbers:)
+      @id = id
+      @winning = winning
+      @numbers = numbers
+    end
+
+    def matches
+      return @matches if defined?(@matches)
+
+      @matches = (winning.to_set & numbers.to_set).count
+    end
+
+    def points
+      return 0 if matches == 0
+
+      2 ** (matches - 1)
+    end
+  end
+
+  class Batch
+    attr_accessor :cards
+
+    def initialize(cards:)
+      @cards = cards
+    end
+
+    def cards_won
+      # Initialize our per-card count. We're going to have the id correspond to the index because I
+      # don't want to have to type `- 1` all over the place and keep track of it.
+      card_count = Array.new(cards.count + 1, 1)
+      card_count[0] = 0
+
+      cards.each do |card|
+        matches = card.matches
+
+        num_cards = card_count[card.id]
+        next if matches == 0
+
+        (1..matches).each do |offset|
+          won_id = card.id + offset
+
+          # Assuming that id is also the 1-indexed row in the text file.
+          next if won_id > cards.count
+
+          card_count[won_id] += num_cards
+        end
+      end
+
+      card_count.sum
+    end
+  end
+
+  def self.call(...)
+    new(...).call
+  end
+
+  def initialize(file:)
+    @file = file
+  end
+
+  LINE_REGEXP = %r/^Card\s+(\d+):([^|]+)\|([^|]+)$/
+
+  attr_accessor :file
+
+  def call
+    fh = File.open(file)
+
+    # This populates internal variables
+    cards = fh.readlines.map.with_index { |line, index| parse_line(line.strip, index) }
+
+    print_cards_won(cards)
+  end
+
+  def print_total_points(cards)
+    total_points = cards.map(&:points).sum.to_i
+
+    $stdout.puts(total_points)
+  end
+
+  def print_cards_won(cards)
+    batch = Batch.new(cards:)
+    won = batch.cards_won
+
+    $stdout.puts(won)
+  end
+
+  def parse_line(line, _index)
+    match = LINE_REGEXP.match(line)
+    id_string, winning_string, numbers_string = match.captures
+
+    id = id_string.to_i
+    winning = winning_string.strip.split(/\s+/).map { _1.strip.to_i }
+    numbers = numbers_string.strip.split(/\s+/).map { _1.strip.to_i }
+
+    Card.new(id:, winning:, numbers:)
+  end
+end
+
+
+if __FILE__ == $PROGRAM_NAME
+  ARGV.each do |file|
+    Day4.call(file:)
+  end
+end
