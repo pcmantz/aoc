@@ -8,9 +8,9 @@ defmodule Day4 do
 
     def matches(card) do
       [card.winning, card.numbers]
-      |> Enum.map(&( MapSet.new(&1) ))
+      |> Enum.map(&MapSet.new(&1))
       |> Enum.reduce(&MapSet.intersection/2)
-      |> Enum.count
+      |> Enum.count()
     end
 
     def points(card) do
@@ -24,15 +24,16 @@ defmodule Day4 do
     defstruct [:cards]
 
     def cards_won(batch) do
-      cards_won_map(batch) |> Map.values |> Enum.sum
+      cards_won_map(batch) |> Map.values() |> Enum.sum()
     end
 
     def cards_won_map(batch) do
-      card_count_map = batch.cards
-      |> Enum.reduce(%{}, &( Map.put(&2, &1.id, 1) ))
+      card_count_map =
+        batch.cards
+        |> Enum.reduce(%{}, &Map.put(&2, &1.id, 1))
 
       batch.cards
-      |> Enum.reduce(card_count_map, &( win_cards(&1, &2, Enum.count(batch.cards)) ))
+      |> Enum.reduce(card_count_map, &win_cards(&1, &2, Enum.count(batch.cards)))
     end
 
     defp win_cards(current_card, card_count_map, max_card_id) do
@@ -47,12 +48,13 @@ defmodule Day4 do
       current_card_count = card_count_map[current_card.id]
 
       won_cards_start = current_card.id + 1
-      won_cards_end = [(current_card.id + matches), max_card_id] |> Enum.min
+      won_cards_end = [current_card.id + matches, max_card_id] |> Enum.min()
 
-      won_cards_map = (won_cards_start..won_cards_end)
-      |> Enum.reduce(%{}, &( Map.put(&2, &1, current_card_count) ))
+      won_cards_map =
+        won_cards_start..won_cards_end
+        |> Enum.reduce(%{}, &Map.put(&2, &1, current_card_count))
 
-      Map.merge(card_count_map, won_cards_map, fn(_k, v1, v2) -> v1 + v2 end)
+      Map.merge(card_count_map, won_cards_map, fn _k, v1, v2 -> v1 + v2 end)
     end
   end
 
@@ -61,8 +63,8 @@ defmodule Day4 do
 
     def parse_file(filename) do
       filename
-      |> File.stream!
-      |> Stream.map(&( parse_line(&1) ))
+      |> File.stream!()
+      |> Stream.map(&parse_line(&1))
     end
 
     def parse_line(line) do
@@ -76,27 +78,28 @@ defmodule Day4 do
     end
 
     def parse_number_string(number_string) do
-      strings = number_string
-      |> String.trim
-      |> String.split(~r/\s+/)
+      strings =
+        number_string
+        |> String.trim()
+        |> String.split(~r/\s+/)
 
-      Enum.map(strings, &( string_to_integer(&1) ))
+      Enum.map(strings, &string_to_integer(&1))
     end
 
     def string_to_integer(str) do
-      str |> String.trim |> Integer.parse |> elem(0)
+      str |> String.trim() |> Integer.parse() |> elem(0)
     end
   end
 
   def total_points(filename) do
     cards_stream = Parser.parse_file(filename)
 
-    cards_stream |> Stream.map(&( Card.points(&1) )) |> Enum.sum
+    cards_stream |> Stream.map(&Card.points(&1)) |> Enum.sum()
   end
 
   def cards_won(filename) do
     cards_stream = Parser.parse_file(filename)
 
-    struct(Batch, %{cards: cards_stream}) |> Batch.cards_won
+    struct(Batch, %{cards: cards_stream}) |> Batch.cards_won()
   end
 end
