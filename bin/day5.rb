@@ -5,6 +5,11 @@ require 'bundler/setup'
 
 require 'pry-byebug'
 
+# This defeated me; I don't have a good strategy for reducing the runtime of this The first part was
+# fine. though.
+#
+
+
 class Day5
   class Types
     SEED = 'seed'
@@ -16,7 +21,7 @@ class Day5
     HUMIDITY = 'humidity'
     LOCATION = 'location'
 
-    ORDER = [SEED, SOIL, FERTILIZER, WATER, LIGHT, TEMPERATURE, HUMIDITY, LOCATION]
+    ORDER = [SEED, SOIL, FERTILIZER, WATER, LIGHT, TEMPERATURE, HUMIDITY, LOCATION].freeze
     ALL = ORDER
 
     REGEXP = /#{Types::ALL.join('|')}/
@@ -27,6 +32,9 @@ class Day5
 
     def initialize(type_maps:)
       @type_maps = type_maps
+
+      # calculate this
+      type_map_map
     end
 
     def seed_location(seed)
@@ -52,15 +60,95 @@ class Day5
         memo[from][to] = type_map
       end
     end
+
+    NUM_RACTORS = 20
+    BATCH_SIZE = 100_000
+
+    def lowest_location_in_seed_ranges(ranges)
+      dispatcher = Ractor.new { loop { Ractor.yield(Ractor.receive) } }
+      workers = (1..NUM_RACTORS).map { |i| build_worker(i, dispatcher) }
+
+      ranges.each do |range|
+        batches = range_in_batches(range)
+        $stderr.puts("Queuing #{batches.count} batches to process range #{range.inspect}")
+        dispatch_batches(dispatcher, batches)
+      end
+
+      wait_for_workers(ranges, workers)
+    end
+
+    private
+
+    def build_worker(i, dispatcher)
+      almanac = Ractor.make_shareable(self)
+
+      Ractor.new(i, dispatcher, almanac) do |i, dispatcher, almanac|
+        loop do
+          batch = dispatcher.take
+          $stderr.puts("worker #{i} processing #{batch.inspect}")
+
+          # NOTE: copypasta from lowest_location_in_seeds because of Proc#isolate
+          result = batch.lazy.map { [_1, almanac.seed_location(_1)] }.min { _1[1] <=> _2[1] }
+          $stderr.puts("worker #{i} found result #{result.inspect}")
+
+          Ractor.yield(result.dup)
+        end
+      end
+    end
+
+    def range_in_batches(range, batch_size = BATCH_SIZE)
+      range.step(batch_size).map do
+        range_end = [(_1 + batch_size - 1), range.end].min
+        Range.new(_1, range_end)
+      end
+    end
+
+    def dispatch_batches(dispatcher, batches)
+      batches.each do
+        batch = Ractor.make_shareable(_1)
+        $stderr.puts("dispatching batch #{batch.inspect}")
+
+        dispatcher.send(batch)
+      end
+    end
+
+    def wait_for_workers(ranges, workers)
+      ranges_counts = ranges.map(&:count)
+
+      seed_count = ranges_counts.sum
+      total_jobs = ranges_counts.map { Rational(_1, BATCH_SIZE).ceil }.sum
+
+      $stderr.puts("#{total_jobs} jobs to process #{seed_count} seeds")
+
+      jobs_done = 0
+      lowest_location = nil
+
+      while jobs_done < total_jobs
+        r, result = Ractor.select(*workers)
+        jobs_done += 1
+        $stderr.puts("receiving result #{result.inspect} (#{jobs_done}/#{total_jobs}) from #{r.inspect}")
+
+        lowest_location ||= result
+        lowest_location = [result, lowest_location].min { _1[1] <=> _2[1] }
+
+        $stderr.puts("processed job #{jobs_done}/#{total_jobs}")
+      end
+
+      lowest_location
+    end
   end
 
   class TypeMap
     attr_accessor :from, :to, :map_ranges
 
+    def self.merge(left, right)
+      left.merge(right)
+    end
+
     def initialize(from:, to:, map_ranges:)
       @from = from
       @to = to
-      @map_ranges = map_ranges
+      @map_ranges = map_ranges.sort {_1.source <=> _2.source }
     end
 
     def call(input)
@@ -69,10 +157,100 @@ class Day5
 
       map_range.call(input)
     end
+
+    def merge(other)
+      raise Error "TypeMaps must be composable to be merged" unless self.to == other.from
+
+      TypeMap.new(
+        from: self.from,
+        to: other.to,
+        map_ranges: other.map_ranges.reduce(self.map_ranges) { MapRange.compose(_2, _1) }
+      )
+    end
   end
 
   class MapRange
     attr_accessor :source, :dest, :length
+
+    # TODO: Not functional, don't know if I can ever make it functional.
+    #
+    #
+    def self.compose(map_ranges, new)
+      map_ranges.each.with_index do |map_range, index|
+        if map_range.in_dest_range?(new.source) && map_range.in_dest_range(new.source_end)
+          return
+          list_substituting_index(
+            map_ranges,
+            index,
+            [
+              MapRange.new(
+                source: map_range.source,
+                dest: map_range.dest,
+                length: new.source - map_range.source
+              ),
+              MapRange.new(source: new.source, dest: new.dest, length: new.length),
+              MapRange.new(
+                source: new.source_end + 1,
+                dest: new.source_end + 1 + map_range.offset,
+                length: map_source.dest_end - new.source_end
+              )
+            ].filter { _1.length <= 0 }
+          )
+
+        elsif map_range.in_dest_range?(new.source)
+          replaced_list = list_substituting_index(
+            map_ranges,
+            index,
+            [
+              MapRange.new(
+                source: map_range.source,
+                dest: map_range.dest + new.offset,
+                length: new.source - map_range.dest
+              ),
+              MapRange.new(source: new.source + 1, dest: new.dest, length: new.length)])
+
+          return compose(
+                   replaced_list,
+                   MapRange.new(
+                     source: map_ranges.source_end + 1,
+                     dest:  map_ranges.source_end + 1 + map_range.offset,
+                     length: new.source_end - map_source.dest_end
+                   ))
+
+        elsif map_range.in_dest_range(new.source_end)
+          replaced_list = list_substituting_index(
+            map_ranges,
+            index,
+            [
+              MapRange.new(
+                source: map_range.source,
+                dest: map_range.dest + new.offset,
+                length: new.source_end - map_range.dest
+              ),
+              MapRange.new(
+                source: map_range.source + 1,
+                dest: map_range.dest + 1 + map_range.offset,
+                length: map_range.dest_end - new.source_end
+
+              )
+            ]
+          )
+
+          return compose(
+                   replaced_list,
+                   MapRange.new(
+
+                   )
+                 )
+
+        end
+
+      end
+    end
+
+    def self.list_substituting_index(list, index, replacement)
+      list[0..i-1] + replacement + list[i+1..-1]
+    end
 
     def self.from_array(ary)
       dest, source, length = ary
@@ -84,10 +262,24 @@ class Day5
       @source = source
       @dest = dest
       @length = length
+
+      offset
+    end
+
+    def source_end
+      dest + length - 1
+    end
+
+    def dest_end
+      dest + length - 1
     end
 
     def in_range?(input)
       (input >= source) && (input < (source + length))
+    end
+
+    def in_dest_range?(input)
+      (input >= dest) && (input < (dest + length))
     end
 
     def call(input)
@@ -108,6 +300,10 @@ class Day5
       new.parse_file(...)
     end
 
+    def self.seed_ranges(seeds)
+      seeds.each_slice(2).map { _1..(_1 + _2 - 1) }.sort { _1.begin <=> _2.begin }
+    end
+
     def parse_file(file)
       fh = File.open(file)
 
@@ -116,7 +312,7 @@ class Day5
 
       type_maps = []
 
-      while section_data = parse_section(fh)
+      while (section_data = parse_section(fh))
         type_map = TypeMap.new(
           from: section_data[:from],
           to: section_data[:to],
@@ -126,7 +322,7 @@ class Day5
         type_maps.push(type_map)
       end
 
-      {seeds: seeds, almanac: Almanac.new(type_maps: type_maps)}
+      { seeds:, almanac: Almanac.new(type_maps:) }
     end
 
     def parse_seed_line(line)
@@ -156,8 +352,6 @@ class Day5
       { from:, to:, map_ranges: ranges }
     end
 
-    def parse_map_line(line); end
-
     def num_string_to_ints(string)
       string.strip.split(/\s+/).map { _1.strip.to_i }
     end
@@ -177,60 +371,21 @@ class Day5
     seeds = result.fetch(:seeds)
     almanac = result.fetch(:almanac)
 
-    lowest_location_in_seeds(almanac, seeds)
+    ractor_lowest_location_in_seeds(almanac, seeds)
   end
 
   def self.find_lowest_location_from_pairs(filename)
     result = Parser.parse_file(filename)
 
     almanac = result.fetch(:almanac)
-    seed_ranges =
-      result
-        .fetch(:seeds)
-        .each_slice(2)
-        .map { _1..(_1 + _2 - 1) }
-        .sort { _1.begin <=> _2.begin }
+    seed_ranges = Parser.seed_ranges(result.fetch(:seeds))
 
-    lowest_locations = seed_ranges.map { lowest_location_in_seeds(almanac, _1) }
-
-    lowest_locations.min
+    almanac.lowest_location_in_seed_ranges(seed_ranges)
   end
 
   def self.lowest_location_in_seeds(almanac, seeds)
-    seeds.map { [_1, almanac.seed_location(_1) ] }.max { _1[1] <=> _2[1] }
+    seeds.map { [_1, almanac.seed_location(_1)] }.min { _1[1] <=> _2[1] }
   end
-
-  NUM_RACTORS = 20
-
-  def self.ractor_lowest_location_in_seeds(almanac, seeds)
-    pipe = Ractor.new { loop { Ractor.yield(Ractor.receive) } }
-    shareable_almanac = Ractor.make_shareable(almanac)
-    seed_count = seeds.count
-
-    workers = (1..NUM_RACTORS).map do |i|
-      Ractor.new(i, pipe, shareable_almanac) do |i, pipe, almanac|
-        while seed = pipe.take do
-          Ractor.yield([seed, almanac.seed_location(seed)])
-        end
-      end
-    end
-
-    # Start calculating
-    seeds.each { |seed| pipe.send(seed) }
-
-    lowest_location = nil
-    while calculated_seeds < seed_count
-      ractor, (seed, location) = Ractor.select(*workers)
-
-      lowest_location ||= [seed, location]
-      lowest_location = lowest_location[1] =< location ? lowest_location : [seed, location]
-
-      calculated_seeds += 1
-    end
-
-    lowest_location
-  end
-
 end
 
 if __FILE__ == $PROGRAM_NAME
