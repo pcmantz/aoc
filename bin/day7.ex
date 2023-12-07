@@ -40,10 +40,10 @@ defmodule Day7 do
         [5] -> :five
         [4, 1] -> :four
         [3, 2] -> :full_house
-        [3 | _] -> :three
+        [3, 1, 1] -> :three
         [2, 2, 1] -> :two_pair
-        [2, _] -> :pair
-        _ -> :high
+        [2, 1, 1, 1] -> :pair
+        [1, 1, 1, 1, 1] -> :high
       end
     end
 
