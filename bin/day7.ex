@@ -32,25 +32,22 @@ defmodule Day7 do
     end
 
     def type_for_hand(hand) do
-      hand_groups = char_freq_map(hand.cards_string)
-      counts = counts_for_groups(hand_groups)
+      hand.cards_string |> char_freq_map |> counts_for_groups |> type_for_counts
+    end
 
+    def type_for_counts(counts) do
       case counts do
         [5] -> :five
         [4, 1] -> :four
         [3, 2] -> :full_house
-        [3, 1, 1] -> :three
+        [3 | _] -> :three
         [2, 2, 1] -> :two_pair
-        [2, 1, 1, 1] -> :pair
-        [1, 1, 1, 1, 1] -> :high
+        [2, _] -> :pair
+        _ -> :high
       end
     end
 
-    def char_freq_map(string) do
-      string
-      |> String.graphemes()
-      |> Enum.reduce(%{}, fn char, acc -> Map.put(acc, char, (acc[char] || 0) + 1) end)
-    end
+    def char_freq_map(string), do: string |> String.graphemes() |> Enum.frequencies()
 
     defp counts_for_groups(groups) when is_map_key(groups, "J") do
       case groups["J"] do
@@ -70,9 +67,7 @@ defmodule Day7 do
 
     defp counts_for_groups(groups), do: groups |> Map.values() |> Enum.sort(&(&1 >= &2))
 
-    def sort_asc_high(left, right) do
-      power_list(left) <= power_list(right)
-    end
+    def sort_asc_high(left, right),  do: power_list(left) <= power_list(right)
 
     defp power_list(hand), do: hand.cards_string |> String.graphemes() |> Enum.map(&@power[&1])
   end
@@ -81,9 +76,7 @@ defmodule Day7 do
     @moduledoc false
 
     def parse_file(filename) do
-      filename
-      |> File.stream!()
-      |> Stream.map(&parse_line(&1))
+      filename |> File.stream!() |> Stream.map(&parse_line(&1))
     end
 
     def parse_line(line) do
