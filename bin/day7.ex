@@ -1,97 +1,80 @@
 #!/usr/local/bin/elixir
 
 defmodule Day7 do
-  @moduledoc false
+  @moduledoc """
+  Day7: Module for solving Day & of Advent of Code
+
+  This is currently configure to present a solution to the second part. In order to solve the first
+  part with this script, rearrange @cards to put J after T, and eliminate the `counts_for_groups`
+  method that handles when J is a key.
+  """
 
   defmodule Hand do
     defstruct [:cards_string, :bid]
 
     @cards ~w{J 2 3 4 5 6 7 8 9 T Q K A}
-    @power @cards |> Enum.with_index |> Enum.into(%{})
+    @power @cards |> Enum.with_index() |> Enum.into(%{})
 
     @types [:high, :pair, :two_pair, :three, :full_house, :four, :five]
-    @type_map @types |> Enum.with_index |> Enum.into(%{})
-
+    @type_map @types |> Enum.with_index() |> Enum.into(%{})
 
     def sort_desc(left, right), do: sort_desc(right, left)
 
     def sort_asc(left, right) do
-      left_chars = left.cards_string |> String.graphemes()
-      right_chars = right.cards_string |> String.graphemes()
-
-      left_groups = char_freq_map(left_chars)
-      right_groups = char_freq_map(right_chars)
-
-      left_highest_rank = highest_rank(left_groups)
-      right_highest_rank = highest_rank(right_groups)
+      left_type = @type_map[type_for_hand(left)]
+      right_type = @type_map[type_for_hand(right)]
 
       cond do
-        left_highest_rank != right_highest_rank ->
-          left_highest_rank <= right_highest_rank
-
-        left_highest_rank == 2 && right_highest_rank == 2 ->
-          cond do
-            is_two_pair?(left_groups) && is_two_pair?(right_groups) ->
-              sort_asc_highest_hand(left_chars, right_chars)
-
-            is_two_pair?(left_groups) ->
-              false
-
-            is_two_pair?(right_groups) ->
-              true
-
-            true ->
-              sort_asc_highest_hand(left_chars, right_chars)
-          end
-
-        left_highest_rank == 3 && right_highest_rank == 3 ->
-          cond do
-            is_full_house?(left_groups) && is_full_house?(right_groups) ->
-              sort_asc_highest_hand(left_chars, right_chars)
-
-            is_full_house?(left_groups) ->
-              false
-
-            is_full_house?(right_groups) ->
-              true
-
-            true ->
-              sort_asc_highest_hand(left_chars, right_chars)
-          end
-
-        left_highest_rank == right_highest_rank ->
-          sort_asc_highest_hand(left_chars, right_chars)
+        left_type < right_type -> true
+        left_type > right_type -> false
+        left_type == right_type -> sort_asc_high(left, right)
       end
     end
 
-    def highest_rank(groups) do
-      case Enum.member?(groups, "J") do
-        false -> simple_rank(groups)
-        true -> groups["J"] + (groups |> Map.delete("J") |> simple_rank())
+    def type_for_hand(hand) do
+      hand_groups = char_freq_map(hand.cards_string)
+      counts = counts_for_groups(hand_groups)
+
+      case counts do
+        [5] -> :five
+        [4, 1] -> :four
+        [3, 2] -> :full_house
+        [3, 1, 1] -> :three
+        [2, 2, 1] -> :two_pair
+        [2, 1, 1, 1] -> :pair
+        [1, 1, 1, 1, 1] -> :high
       end
     end
 
-    def simple_rank(groups), do: groups |> Map.values() |> Enum.max()
-
-    def char_freq_map(chars) do
-      Enum.reduce(chars, %{}, fn char, acc ->
-        Map.put(acc, char, (acc[char] || 0) + 1)
-      end)
+    def char_freq_map(string) do
+      string
+      |> String.graphemes()
+      |> Enum.reduce(%{}, fn char, acc -> Map.put(acc, char, (acc[char] || 0) + 1) end)
     end
 
-    def is_two_pair?(groups) do
-      Enum.sort(Map.values(groups), &(&1 <= &2)) == [1, 2, 2]
+    defp counts_for_groups(groups) when is_map_key(groups, "J") do
+      case groups["J"] do
+        5 ->
+          [5]
+
+        4 ->
+          [5]
+
+        joker_count = _ ->
+          base_count = groups |> Map.delete("J") |> counts_for_groups
+          head_count = List.first(base_count) + joker_count
+
+          List.replace_at(base_count, 0, head_count)
+      end
     end
 
-    def is_full_house?(groups) do
-      Enum.sort(Map.values(groups), &(&1 <= &2)) == [2, 3]
+    defp counts_for_groups(groups), do: groups |> Map.values() |> Enum.sort(&(&1 >= &2))
+
+    def sort_asc_high(left, right) do
+      power_list(left) <= power_list(right)
     end
 
-    def sort_asc_highest_hand(left_list, right_list) do
-      hand_power_list(left_list) <= hand_power_list(right_list)
-    end
-
-    def hand_power_list(list), do: list |> Enum.map(&@power[&1])
+    defp power_list(hand), do: hand.cards_string |> String.graphemes() |> Enum.map(&@power[&1])
   end
 
   defmodule Parser do
@@ -123,4 +106,4 @@ defmodule Day7 do
   def score_hand({hand, rank}), do: rank * hand.bid
 end
 
-# "tmp/day7_sample.txt" |> Day7.Parser.parse_file() |> Day7.score_hands_list()
+"tmp/day7_sample.txt" |> Day7.Parser.parse_file() |> Day7.score_hands_list()
