@@ -1,6 +1,6 @@
 #!/usr/local/bin/elixir
 
-defmodule Day1Twoex do
+defmodule Day1 do
   @moduledoc false
 
   @zero  "zero"
