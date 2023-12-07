@@ -3,7 +3,7 @@
 # Incomplete translation of the ruby version.
 #
 #
-defmodule Day2Two do
+defmodule Day2 do
   @moduledoc false
 
   defmodule Round do
