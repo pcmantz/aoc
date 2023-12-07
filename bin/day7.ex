@@ -20,19 +20,20 @@ defmodule Day7 do
 
     def sort_desc(left, right), do: sort_desc(right, left)
 
+    def type(hand), do: hand.cards_string |> char_freq_map |> counts_for_groups |> type_for_counts
+    def type_value(hand), do: @type_map[type(hand)]
+
+    def power_list(hand), do: hand.cards_string |> String.graphemes() |> Enum.map(&@power[&1])
+
     def sort_asc(left, right) do
-      left_type = @type_map[type_for_hand(left)]
-      right_type = @type_map[type_for_hand(right)]
+      left_type = type_value(left)
+      right_type = type_value(right)
 
       cond do
         left_type < right_type -> true
         left_type > right_type -> false
-        left_type == right_type -> sort_asc_high(left, right)
+        left_type == right_type -> power_list(left) <= power_list(right)
       end
-    end
-
-    def type_for_hand(hand) do
-      hand.cards_string |> char_freq_map |> counts_for_groups |> type_for_counts
     end
 
     def type_for_counts(counts) do
@@ -66,10 +67,6 @@ defmodule Day7 do
     end
 
     defp counts_for_groups(groups), do: groups |> Map.values() |> Enum.sort(&(&1 >= &2))
-
-    def sort_asc_high(left, right),  do: power_list(left) <= power_list(right)
-
-    defp power_list(hand), do: hand.cards_string |> String.graphemes() |> Enum.map(&@power[&1])
   end
 
   defmodule Parser do
