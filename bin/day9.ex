@@ -17,7 +17,7 @@ defmodule Day9 do
     {start, differences} = find_start_and_differences(sequence)
 
     cond do
-      Enum.all?(differences, &(&1 == 0)) -> apply_prepend_differences(start, [0] ++ differences )
+      Enum.all?(differences, &(&1 == 0)) -> apply_prepend_differences(start, [0] ++ differences)
       true -> apply_prepend_differences(start, prepend_number(differences))
     end
   end
