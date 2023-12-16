@@ -1,5 +1,9 @@
 defmodule Day11 do
+  @moduledoc false
+
   defmodule Grid do
+    @moduledoc false
+
     defstruct [:tiles, :length, :width]
 
     def from_file(filename) do
@@ -80,6 +84,8 @@ defmodule Day11 do
   end
 
   defmodule Universe do
+    @moduledoc false
+
     defstruct [:grid, :galaxies, empty_rows: [], empty_cols: []]
 
     def from_grid(grid) do
@@ -139,10 +145,10 @@ defmodule Day11 do
       dist = Grid.distance(a, b)
 
       empty_row_crosses =
-        universe.empty_rows |> Enum.filter(&between(elem(a, 0), elem(b, 0), &1)) |> Enum.count()
+        universe.empty_rows |> Enum.count(&between(elem(a, 0), elem(b, 0), &1))
 
       empty_col_crosses =
-        universe.empty_cols |> Enum.filter(&between(elem(a, 1), elem(b, 1), &1)) |> Enum.count()
+        universe.empty_cols |> Enum.count(&between(elem(a, 1), elem(b, 1), &1))
 
       dist + (empty_row_crosses + empty_col_crosses) * 999_999
     end
